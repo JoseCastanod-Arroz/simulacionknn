@@ -1,0 +1,131 @@
+/* static/comun.css — estilos compartidos: barra de navegación y modal de nombre.
+   Usa las mismas variables de tema (--fondo, --superficie, etc.) que definen
+   las plantillas. */
+
+/* Barra de navegación superior --------------------------------------------- */
+.nav-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 0.6rem 1.5rem;
+  background: var(--superficie);
+  border-bottom: 1px solid var(--borde);
+}
+
+.nav-links {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.nav-links a {
+  text-decoration: none;
+  color: var(--texto-tenue);
+  font-size: 0.9rem;
+  padding: 0.35rem 0.8rem;
+  border-radius: 999px;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.nav-links a:hover {
+  color: var(--texto);
+  background: var(--acento-suave);
+}
+
+.nav-links a.activo {
+  color: var(--acento);
+  background: var(--acento-suave);
+  font-weight: 600;
+}
+
+.nav-usuario {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--texto-tenue);
+}
+
+.nav-usuario strong {
+  color: var(--texto);
+}
+
+#nav-cambiar {
+  border: 1px solid var(--borde);
+  background: var(--fondo);
+  color: var(--texto);
+  border-radius: 999px;
+  padding: 0.25rem 0.7rem;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+#nav-cambiar:hover {
+  border-color: var(--acento);
+}
+
+/* Modal de nombre ---------------------------------------------------------- */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal {
+  background: var(--superficie);
+  color: var(--texto);
+  border: 1px solid var(--borde);
+  border-radius: 12px;
+  padding: 1.5rem;
+  width: min(90vw, 380px);
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
+}
+
+.modal h2 {
+  margin: 0 0 0.5rem;
+  font-size: 1.15rem;
+}
+
+.modal p {
+  margin: 0 0 1rem;
+  color: var(--texto-tenue);
+  font-size: 0.9rem;
+}
+
+.modal input {
+  width: 100%;
+  padding: 0.6rem 0.75rem;
+  font-size: 1rem;
+  border: 1px solid var(--borde);
+  border-radius: 8px;
+  background: var(--fondo);
+  color: var(--texto);
+  margin-bottom: 0.5rem;
+}
+
+.modal-error {
+  color: #dc2626;
+  min-height: 1.2em;
+  margin: 0 0 0.5rem !important;
+  font-size: 0.85rem;
+}
+
+.modal button {
+  width: 100%;
+  border: none;
+  background: var(--acento);
+  color: #fff;
+  border-radius: 8px;
+  padding: 0.6rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.modal button:hover {
+  opacity: 0.9;
+}

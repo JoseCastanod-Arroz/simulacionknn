@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>KNN — Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='comun.css') }}" />
+    <style>
+      :root {
+        --fondo: #f7f8fa;
+        --superficie: #ffffff;
+        --texto: #1f2937;
+        --texto-tenue: #6b7280;
+        --borde: #e5e7eb;
+        --acento: #2563eb;
+        --acento-suave: rgba(37, 99, 235, 0.12);
+        --sombra: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--fondo);
+        color: var(--texto);
+      }
+      main { max-width: 760px; margin: 0 auto; padding: 1.5rem; }
+      h1 { font-size: 1.4rem; margin: 0 0 0.25rem; }
+      .subtitulo { color: var(--texto-tenue); margin: 0 0 1.25rem; }
+
+      table {
+        width: 100%;
+        border-collapse: collapse;
+        background: var(--superficie);
+        border: 1px solid var(--borde);
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: var(--sombra);
+      }
+      th, td {
+        text-align: left;
+        padding: 0.7rem 1rem;
+        border-bottom: 1px solid var(--borde);
+        font-size: 0.9rem;
+      }
+      th {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--texto-tenue);
+        background: var(--fondo);
+      }
+      tr:last-child td { border-bottom: none; }
+      td.pos { font-weight: 700; color: var(--texto-tenue); width: 3rem; }
+      td.puntaje { font-weight: 700; color: var(--acento); font-variant-numeric: tabular-nums; }
+      .top-1 td.pos { color: #d97706; }
+      .vacio { text-align: center; color: var(--texto-tenue); padding: 2rem; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Ranking — Modo Desafío</h1>
+      <p class="subtitulo">Mejores puntajes guardados. ¡Supera el récord!</p>
+
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Jugador</th>
+            <th>Puntaje</th>
+            <th>Aciertos</th>
+            <th>Fecha</th>
+          </tr>
+        </thead>
+        <tbody id="tabla-body">
+          <tr><td colspan="5" class="vacio">Cargando…</td></tr>
+        </tbody>
+      </table>
+    </main>
+
+    <script src="{{ url_for('static', filename='nombre.js') }}"></script>
+    <script>
+      // Carga el leaderboard desde la DB y lo pinta en la tabla.
+      async function cargarRanking() {
+        const cuerpo = document.getElementById("tabla-body");
+        try {
+          const r = await fetch("/api/leaderboard?limite=20");
+          const data = await r.json();
+          const top = data.top || [];
+          if (top.length === 0) {
+            cuerpo.innerHTML =
+              '<tr><td colspan="5" class="vacio">Aún no hay partidas. Ve a Desafío y juega una.</td></tr>';
+            return;
+          }
+          cuerpo.innerHTML = top
+            .map((fila, i) => {
+              const fecha = (fila.fecha || "").replace("T", " ").slice(0, 16);
+              return `
+                <tr class="${i === 0 ? "top-1" : ""}">
+                  <td class="pos">${i + 1}</td>
+                  <td>${escapar(fila.nombre)}</td>
+                  <td class="puntaje">${fila.puntaje}</td>
+                  <td>${fila.aciertos} / ${fila.total}</td>
+                  <td>${fecha}</td>
+                </tr>`;
+            })
+            .join("");
+        } catch (e) {
+          cuerpo.innerHTML =
+            '<tr><td colspan="5" class="vacio">No se pudo cargar el ranking.</td></tr>';
+        }
+      }
+      // Escapa texto para evitar inyección de HTML en los nombres.
+      function escapar(s) {
+        const d = document.createElement("div");
+        d.textContent = s == null ? "" : String(s);
+        return d.innerHTML;
+      }
+      document.addEventListener("DOMContentLoaded", cargarRanking);
+    </script>
+  </body>
+</html>

@@ -1,0 +1,751 @@
+<!DOCTYPE html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Clasificador KNN en Cascada — Práctica</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='comun.css') }}" />
+
+    <!-- ================================================================
+         Estilos inline (diseño de 3 archivos: sin .css separado).
+         Tema claro/oscuro con variables CSS; el alternador vive en main.js
+         y cambia el atributo data-tema en <html>. _Requirements: 9.1–9.3_
+         ================================================================ -->
+    <style>
+      /* Tema claro (por defecto) --------------------------------------- */
+      :root {
+        --fondo: #f7f8fa;
+        --superficie: #ffffff;
+        --texto: #1f2937;
+        --texto-tenue: #6b7280;
+        --borde: #e5e7eb;
+        --acento: #2563eb;
+        --acento-suave: rgba(37, 99, 235, 0.12);
+        --sombra: 0 1px 3px rgba(0, 0, 0, 0.08);
+      }
+
+      /* Tema oscuro (aplicado por main.js con data-tema="oscuro") ------- */
+      :root[data-tema="oscuro"] {
+        --fondo: #0f172a;
+        --superficie: #1e293b;
+        --texto: #e2e8f0;
+        --texto-tenue: #94a3b8;
+        --borde: #334155;
+        --acento: #60a5fa;
+        --acento-suave: rgba(96, 165, 250, 0.18);
+        --sombra: 0 1px 3px rgba(0, 0, 0, 0.4);
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+        background: var(--fondo);
+        color: var(--texto);
+        line-height: 1.5;
+        transition: background 0.2s ease, color 0.2s ease;
+      }
+
+      /* Encabezado ----------------------------------------------------- */
+      header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 1rem;
+        padding: 1rem 1.5rem;
+        border-bottom: 1px solid var(--borde);
+        background: var(--superficie);
+      }
+
+      header h1 {
+        margin: 0;
+        font-size: 1.25rem;
+        font-weight: 600;
+      }
+
+      /* Alternador de tema */
+      #tema-toggle {
+        border: 1px solid var(--borde);
+        background: var(--fondo);
+        color: var(--texto);
+        border-radius: 999px;
+        padding: 0.4rem 0.9rem;
+        font-size: 0.85rem;
+        cursor: pointer;
+        transition: background 0.2s ease, border-color 0.2s ease;
+      }
+
+      #tema-toggle:hover {
+        border-color: var(--acento);
+      }
+
+      /* Layout principal: etapas a la izquierda, árbol fijo a la derecha */
+      main {
+        display: grid;
+        grid-template-columns: 1fr 280px;
+        gap: 1.5rem;
+        align-items: start;
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 1.5rem;
+      }
+
+      .etapas {
+        display: flex;
+        flex-direction: column;
+        gap: 1.5rem;
+        min-width: 0;
+      }
+
+      /* Tarjeta de etapa ----------------------------------------------- */
+      .etapa {
+        background: var(--superficie);
+        border: 1px solid var(--borde);
+        border-radius: 10px;
+        padding: 1.25rem;
+        box-shadow: var(--sombra);
+      }
+
+      .etapa h2 {
+        margin: 0 0 1rem;
+        font-size: 1rem;
+        font-weight: 600;
+        color: var(--acento);
+      }
+
+      /* Controles (sliders) -------------------------------------------- */
+      .controles {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0.75rem 1.25rem;
+        margin: 0 0 1rem;
+      }
+
+      .control {
+        display: flex;
+        flex-direction: column;
+        gap: 0.25rem;
+        font-size: 0.85rem;
+      }
+
+      .control label {
+        color: var(--texto-tenue);
+      }
+
+      .control input[type="range"] {
+        width: 100%;
+        accent-color: var(--acento);
+        cursor: pointer;
+      }
+
+      .control output {
+        font-variant-numeric: tabular-nums;
+        font-weight: 600;
+        color: var(--texto);
+      }
+
+      /* Visualización 2D ----------------------------------------------- */
+      canvas {
+        display: block;
+        max-width: 100%;
+        height: auto;
+        background: var(--fondo);
+        border: 1px solid var(--borde);
+        border-radius: 8px;
+      }
+
+      .resultado {
+        margin: 0.75rem 0 0;
+        font-weight: 600;
+        min-height: 1.5em;
+      }
+
+      /* Panel del árbol: fijo/pegajoso a la derecha -------------------- */
+      .panel-arbol {
+        position: sticky;
+        top: 1.5rem;
+        background: var(--superficie);
+        border: 1px solid var(--borde);
+        border-radius: 10px;
+        padding: 1.25rem;
+        box-shadow: var(--sombra);
+      }
+
+      .panel-arbol h2 {
+        margin: 0 0 1rem;
+        font-size: 1rem;
+        font-weight: 600;
+      }
+
+      .arbol-etapa-titulo {
+        margin: 0.5rem 0 0.35rem;
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--texto-tenue);
+      }
+
+      .arbol-ramas {
+        display: flex;
+        flex-direction: column;
+        gap: 0.35rem;
+        padding-left: 0.75rem;
+        border-left: 1px solid var(--borde);
+      }
+
+      .arbol-nodo {
+        border: 1px solid var(--borde);
+        border-radius: 6px;
+        padding: 0.35rem 0.6rem;
+        font-size: 0.85rem;
+        transition: opacity 0.2s ease, background 0.2s ease,
+          border-color 0.2s ease, font-weight 0.2s ease;
+      }
+
+      /* Nodo activo: rama elegida por el resultado de una etapa (Req 6.2) */
+      .arbol-nodo.activo {
+        font-weight: 700;
+        color: var(--acento);
+        background: var(--acento-suave);
+        border-color: var(--acento);
+      }
+
+      /* Rama descartada: atenuada (Req 6.3, 6.5) */
+      .arbol-nodo.descartado {
+        opacity: 0.4;
+      }
+
+      /* Modo juego: datos de la persona a la izquierda, gráfica a la derecha */
+      .juego {
+        display: grid;
+        grid-template-columns: 220px 1fr;
+        gap: 1.25rem;
+        align-items: start;
+      }
+
+      .persona {
+        background: var(--fondo);
+        border: 1px solid var(--borde);
+        border-radius: 8px;
+        padding: 0.9rem 1rem;
+      }
+
+      .persona h3 {
+        margin: 0 0 0.75rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+      }
+
+      /* Tira única de la persona: una sola línea arriba de todas las etapas. */
+      .persona-tira {
+        background: var(--superficie);
+        border: 1px solid var(--borde);
+        border-left: 3px solid var(--acento);
+        border-radius: 8px;
+        padding: 0.75rem 1rem;
+        box-shadow: var(--sombra);
+        line-height: 1.5;
+      }
+
+      .persona-tira-titulo {
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.04em;
+        color: var(--texto-tenue);
+        margin-right: 0.4rem;
+      }
+
+      .persona-tira-texto {
+        font-size: 0.95rem;
+        color: var(--texto);
+      }
+
+      .persona-tira-texto strong {
+        color: var(--acento);
+      }
+
+      .opciones {
+        border: 1px solid var(--borde);
+        border-radius: 6px;
+        margin: 0 0 0.9rem;
+        padding: 0.6rem 0.75rem;
+        display: flex;
+        flex-direction: column;
+        gap: 0.4rem;
+      }
+
+      .opciones legend {
+        font-size: 0.78rem;
+        color: var(--texto-tenue);
+        padding: 0 0.3rem;
+      }
+
+      .opciones label {
+        display: flex;
+        align-items: center;
+        gap: 0.45rem;
+        font-size: 0.9rem;
+        cursor: pointer;
+      }
+
+      .btn-calificar {
+        width: 100%;
+        border: none;
+        background: var(--acento);
+        color: #fff;
+        border-radius: 6px;
+        padding: 0.55rem 0.8rem;
+        font-size: 0.9rem;
+        font-weight: 600;
+        cursor: pointer;
+        transition: opacity 0.2s ease;
+      }
+
+      .btn-calificar:hover {
+        opacity: 0.9;
+      }
+
+      .veredicto {
+        margin: 0.75rem 0 0;
+        font-weight: 700;
+        min-height: 1.4em;
+        text-align: center;
+      }
+
+      .veredicto.correcto {
+        color: #16a34a;
+      }
+
+      .veredicto.incorrecto {
+        color: #dc2626;
+      }
+
+      .grafica {
+        min-width: 0;
+      }
+
+      /* Responsive: en pantallas estrechas el árbol pasa debajo. */
+      @media (max-width: 800px) {
+        main {
+          grid-template-columns: 1fr;
+        }
+
+        .panel-arbol {
+          position: static;
+        }
+
+        .controles {
+          grid-template-columns: 1fr;
+        }
+
+        .juego {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>Clasificador KNN en Cascada</h1>
+      <!-- Alternador de tema claro/oscuro (cableado en main.js). _Requirements: 9.2, 9.3_ -->
+      <button type="button" id="tema-toggle" aria-pressed="false">🌙 Tema oscuro</button>
+    </header>
+
+    <main>
+      <!-- ================================================================
+           Zona de etapas: 3 bloques, cada uno con su formulario de sliders
+           y su <canvas>. Las etapas 2 y 3 están ocultas al inicio y se
+           muestran desde main.js (actualizarUI) según el resultado previo.
+           _Requirements: 2.1–2.6, 4.2, 5.1_
+           ================================================================ -->
+      <section class="etapas">
+        <!-- ---------------------------------------------------------------
+             Tira única de la persona: una sola persona coherente recorre
+             toda la cascada. Sus datos (nombre, edad y features de las etapas
+             que recorre) se muestran aquí arriba una sola vez. Cada etapa
+             conserva sus opciones + botón Calificar. Se regenera al recargar.
+             --------------------------------------------------------------- -->
+        <div class="persona-tira" id="persona-tira">
+          <span class="persona-tira-titulo">Persona a clasificar:</span>
+          <span class="persona-tira-texto" id="persona-linea">—</span>
+        </div>
+
+        <!-- ---------------------------------------------------------------
+             Etapa 1: "Técnico" / "No técnico"
+               x = horas de pantalla por semana (5–70)
+               y = lenguajes de programación conocidos (0–8)
+             --------------------------------------------------------------- -->
+        <section class="etapa" id="etapa-1">
+          <h2>Etapa 1 — Técnico / No técnico</h2>
+
+          <!-- Modo juego: datos de una persona (izquierda) + gráfica (derecha).
+               El usuario lee las features de la persona, las mete en los sliders
+               y elige a qué grupo cree que pertenece. "Calificar" compara la
+               clase elegida contra la clase que da KNN para esa persona. -->
+          <div class="juego">
+            <aside class="persona" id="persona-1">
+              <fieldset class="opciones" id="opciones-1">
+                <legend>¿A qué grupo pertenece?</legend>
+                <label>
+                  <input type="radio" name="opcion-1" value="No técnico" />
+                  No técnico
+                </label>
+                <label>
+                  <input type="radio" name="opcion-1" value="Técnico" />
+                  Técnico
+                </label>
+              </fieldset>
+
+              <button type="button" class="btn-calificar" id="calificar-1">
+                Calificar
+              </button>
+              <p class="veredicto" id="veredicto-1" role="status"></p>
+            </aside>
+
+            <div class="grafica">
+          <form class="controles" id="form-1" autocomplete="off">
+            <!-- Variable X: horas de pantalla por semana (Req 2.1) -->
+            <div class="control">
+              <label for="e1-x">Horas de pantalla por semana</label>
+              <input
+                type="range"
+                id="e1-x"
+                name="x"
+                min="5"
+                max="70"
+                step="1"
+                value="30"
+              />
+              <output id="e1-x-val" for="e1-x">30</output>
+            </div>
+
+            <!-- Variable Y: lenguajes de programación conocidos (Req 2.2) -->
+            <div class="control">
+              <label for="e1-y">Lenguajes de programación conocidos</label>
+              <input
+                type="range"
+                id="e1-y"
+                name="y"
+                min="0"
+                max="8"
+                step="1"
+                value="2"
+              />
+              <output id="e1-y-val" for="e1-y">2</output>
+            </div>
+
+            <!-- Control N: puntos del dataset a usar (Req 4.2) -->
+            <div class="control">
+              <label for="e1-n">N (puntos del dataset)</label>
+              <input
+                type="range"
+                id="e1-n"
+                name="n"
+                min="1"
+                max="20"
+                step="1"
+                value="20"
+              />
+              <output id="e1-n-val" for="e1-n">20</output>
+            </div>
+
+            <!-- Control K: vecinos (rango dinámico 1–N, ajustado en main.js) (Req 5.1) -->
+            <div class="control">
+              <label for="e1-k">K (vecinos)</label>
+              <input
+                type="range"
+                id="e1-k"
+                name="k"
+                min="1"
+                max="20"
+                step="1"
+                value="3"
+              />
+              <output id="e1-k-val" for="e1-k">3</output>
+            </div>
+          </form>
+
+          <canvas id="canvas-1" width="440" height="440"></canvas>
+
+          <p class="resultado" id="resultado-1"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---------------------------------------------------------------
+             Etapa 2: "Infraestructura/Sistemas" / "Desarrollo" / "Datos"
+               x = horas/semana configurando servidores/redes/infra (0–40)
+               y = horas/semana analizando datos / estadística / ML (0–40)
+             Oculta al inicio (Req 1.2 / cascada gestionada en main.js).
+             --------------------------------------------------------------- -->
+        <section class="etapa" id="etapa-2" hidden>
+          <h2>Etapa 2 — Infraestructura/Sistemas / Desarrollo / Datos</h2>
+
+          <div class="juego">
+            <aside class="persona" id="persona-2">
+              <fieldset class="opciones" id="opciones-2">
+                <legend>¿A qué grupo pertenece?</legend>
+                <label>
+                  <input type="radio" name="opcion-2" value="Infraestructura/Sistemas" />
+                  Infraestructura/Sistemas
+                </label>
+                <label>
+                  <input type="radio" name="opcion-2" value="Desarrollo" />
+                  Desarrollo
+                </label>
+                <label>
+                  <input type="radio" name="opcion-2" value="Datos" />
+                  Datos
+                </label>
+              </fieldset>
+
+              <button type="button" class="btn-calificar" id="calificar-2">
+                Calificar
+              </button>
+              <p class="veredicto" id="veredicto-2" role="status"></p>
+            </aside>
+
+            <div class="grafica">
+          <form class="controles" id="form-2" autocomplete="off">
+            <!-- Variable X: horas configurando servidores/redes/infra (Req 2.3) -->
+            <div class="control">
+              <label for="e2-x">Horas por semana configurando servidores / redes / infraestructura</label>
+              <input
+                type="range"
+                id="e2-x"
+                name="x"
+                min="0"
+                max="40"
+                step="1"
+                value="10"
+              />
+              <output id="e2-x-val" for="e2-x">10</output>
+            </div>
+
+            <!-- Variable Y: horas analizando datos / estadística / ML (Req 2.4) -->
+            <div class="control">
+              <label for="e2-y">Horas por semana analizando datos / estadística / ML</label>
+              <input
+                type="range"
+                id="e2-y"
+                name="y"
+                min="0"
+                max="40"
+                step="1"
+                value="10"
+              />
+              <output id="e2-y-val" for="e2-y">10</output>
+            </div>
+
+            <!-- Control N: puntos del dataset a usar (Req 4.2) -->
+            <div class="control">
+              <label for="e2-n">N (puntos del dataset)</label>
+              <input
+                type="range"
+                id="e2-n"
+                name="n"
+                min="1"
+                max="20"
+                step="1"
+                value="20"
+              />
+              <output id="e2-n-val" for="e2-n">20</output>
+            </div>
+
+            <!-- Control K: vecinos (rango dinámico 1–N) (Req 5.1) -->
+            <div class="control">
+              <label for="e2-k">K (vecinos)</label>
+              <input
+                type="range"
+                id="e2-k"
+                name="k"
+                min="1"
+                max="20"
+                step="1"
+                value="3"
+              />
+              <output id="e2-k-val" for="e2-k">3</output>
+            </div>
+          </form>
+
+          <canvas id="canvas-2" width="440" height="440"></canvas>
+
+          <p class="resultado" id="resultado-2"></p>
+            </div>
+          </div>
+        </section>
+
+        <!-- ---------------------------------------------------------------
+             Etapa 3: "Sysadmin" / "Redes" / "Seguridad"
+               x = horas administrando servidores o redes por semana (0–40)
+               y = certificaciones técnicas (0–6)
+             Oculta al inicio (Req 1.4 / cascada gestionada en main.js).
+             --------------------------------------------------------------- -->
+        <section class="etapa" id="etapa-3" hidden>
+          <h2>Etapa 3 — Sysadmin / Redes / Seguridad</h2>
+
+          <div class="juego">
+            <aside class="persona" id="persona-3">
+              <fieldset class="opciones" id="opciones-3">
+                <legend>¿A qué grupo pertenece?</legend>
+                <label>
+                  <input type="radio" name="opcion-3" value="Sysadmin" />
+                  Sysadmin
+                </label>
+                <label>
+                  <input type="radio" name="opcion-3" value="Redes" />
+                  Redes
+                </label>
+                <label>
+                  <input type="radio" name="opcion-3" value="Seguridad" />
+                  Seguridad
+                </label>
+              </fieldset>
+
+              <button type="button" class="btn-calificar" id="calificar-3">
+                Calificar
+              </button>
+              <p class="veredicto" id="veredicto-3" role="status"></p>
+            </aside>
+
+            <div class="grafica">
+          <form class="controles" id="form-3" autocomplete="off">
+            <!-- Variable X: horas administrando servidores o redes (Req 2.5) -->
+            <div class="control">
+              <label for="e3-x">Horas administrando servidores o redes por semana</label>
+              <input
+                type="range"
+                id="e3-x"
+                name="x"
+                min="0"
+                max="40"
+                step="1"
+                value="20"
+              />
+              <output id="e3-x-val" for="e3-x">20</output>
+            </div>
+
+            <!-- Variable Y: certificaciones técnicas (Req 2.6) -->
+            <div class="control">
+              <label for="e3-y">Certificaciones técnicas</label>
+              <input
+                type="range"
+                id="e3-y"
+                name="y"
+                min="0"
+                max="6"
+                step="1"
+                value="3"
+              />
+              <output id="e3-y-val" for="e3-y">3</output>
+            </div>
+
+            <!-- Control N: puntos del dataset a usar (Req 4.2) -->
+            <div class="control">
+              <label for="e3-n">N (puntos del dataset)</label>
+              <input
+                type="range"
+                id="e3-n"
+                name="n"
+                min="1"
+                max="20"
+                step="1"
+                value="20"
+              />
+              <output id="e3-n-val" for="e3-n">20</output>
+            </div>
+
+            <!-- Control K: vecinos (rango dinámico 1–N) (Req 5.1) -->
+            <div class="control">
+              <label for="e3-k">K (vecinos)</label>
+              <input
+                type="range"
+                id="e3-k"
+                name="k"
+                min="1"
+                max="20"
+                step="1"
+                value="3"
+              />
+              <output id="e3-k-val" for="e3-k">3</output>
+            </div>
+          </form>
+
+          <canvas id="canvas-3" width="440" height="440"></canvas>
+
+          <p class="resultado" id="resultado-3"></p>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <!-- ================================================================
+           Panel del árbol de clases. Contenedor fijo a la derecha; su
+           contenido (los nodos anidados de las 3 etapas y sus ramas) se
+           completa en la tarea 5.2. _Requirements: 6.1_
+           ================================================================ -->
+      <aside class="panel-arbol" id="panel-arbol">
+        <!-- ------------------------------------------------------------
+             Árbol de clases: divs anidados fijos con las 3 etapas y todas
+             sus ramas. main.js (tareas 7.2/8.1) agrega/quita .activo y
+             .descartado sobre los nodos usando su atributo data-clase.
+             _Requirements: 6.1_
+             ------------------------------------------------------------ -->
+        <h2>Árbol de clases</h2>
+
+        <!-- Etapa 1: raíz de la cascada -->
+        <div class="arbol-etapa" id="arbol-etapa-1" data-etapa="1">
+          <p class="arbol-etapa-titulo">Etapa 1</p>
+
+          <div class="arbol-ramas">
+            <!-- Rama "No técnico": hoja, detiene la cascada -->
+            <div class="arbol-nodo" data-clase="No técnico">No técnico</div>
+
+            <!-- Rama "Técnico": abre la Etapa 2 -->
+            <div class="arbol-nodo" data-clase="Técnico">
+              Técnico
+
+              <!-- Etapa 2: bajo "Técnico" -->
+              <div class="arbol-etapa" id="arbol-etapa-2" data-etapa="2">
+                <p class="arbol-etapa-titulo">Etapa 2</p>
+
+                <div class="arbol-ramas">
+                  <!-- Rama "Desarrollo": hoja, detiene la cascada -->
+                  <div class="arbol-nodo" data-clase="Desarrollo">Desarrollo</div>
+
+                  <!-- Rama "Datos": hoja, detiene la cascada -->
+                  <div class="arbol-nodo" data-clase="Datos">Datos</div>
+
+                  <!-- Rama "Infraestructura/Sistemas": abre la Etapa 3 -->
+                  <div class="arbol-nodo" data-clase="Infraestructura/Sistemas">
+                    Infraestructura/Sistemas
+
+                    <!-- Etapa 3: bajo "Infraestructura/Sistemas" -->
+                    <div class="arbol-etapa" id="arbol-etapa-3" data-etapa="3">
+                      <p class="arbol-etapa-titulo">Etapa 3</p>
+
+                      <div class="arbol-ramas">
+                        <!-- Ramas hoja de la Etapa 3 -->
+                        <div class="arbol-nodo" data-clase="Sysadmin">Sysadmin</div>
+                        <div class="arbol-nodo" data-clase="Redes">Redes</div>
+                        <div class="arbol-nodo" data-clase="Seguridad">Seguridad</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+    </main>
+
+    <!-- Nombre obligatorio + navegación (compartido con las otras vistas). -->
+    <script src="{{ url_for('static', filename='nombre.js') }}"></script>
+    <!-- Lógica de interfaz (sliders, fetch, canvas, árbol): tareas 6–9. -->
+    <script src="{{ url_for('static', filename='main.js') }}"></script>
+  </body>
+</html>
