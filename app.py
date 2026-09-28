@@ -10,6 +10,7 @@ Estructura del proyecto (3 archivos):
 - ``templates/index.html`` -> 3 formularios + 3 canvas + panel del árbol
 """
 
+import argparse
 import os
 import random
 import sqlite3
@@ -673,4 +674,34 @@ def api_leaderboard():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    # El host, puerto y modo debug se pueden indicar por línea de comandos o por
+    # variables de entorno. Prioridad: argumento CLI > variable de entorno >
+    # valor por defecto.
+    #
+    #   python app.py --port 8080
+    #   python app.py --host 0.0.0.0 --port 5000 --debug
+    #   PORT=8080 HOST=0.0.0.0 python app.py
+    parser = argparse.ArgumentParser(
+        description="Clasificador KNN en Cascada (servidor Flask)."
+    )
+    parser.add_argument(
+        "--host",
+        default=os.environ.get("HOST", "127.0.0.1"),
+        help="Interfaz de escucha (por defecto 127.0.0.1, o la variable HOST). "
+             "Usa 0.0.0.0 para exponerlo en la red.",
+    )
+    parser.add_argument(
+        "--port",
+        type=int,
+        default=int(os.environ.get("PORT", 5000)),
+        help="Puerto de escucha (por defecto 5000, o la variable PORT).",
+    )
+    parser.add_argument(
+        "--debug",
+        action="store_true",
+        default=os.environ.get("DEBUG", "").lower() in ("1", "true", "yes"),
+        help="Activa el modo debug de Flask (recarga automática).",
+    )
+    args = parser.parse_args()
+
+    app.run(host=args.host, port=args.port, debug=args.debug)
